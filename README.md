@@ -10,6 +10,10 @@
 [Alessandro Burzio*](https://research.nvidia.com/labs/dvl/author/alessandro-burzio/), [Tobias Fischer*](https://tobiasfshr.github.io/), [Sven Elflein](https://selflein.github.io/), [Qunjie Zhou](https://research.nvidia.com/labs/dvl/author/qunjie-zhou/), [Riccardo de Lutio](https://riccardodelutio.github.io/), [Jiawei Ren](https://jiawei-ren.github.io/), [Jiahui Huang](https://huangjh-pub.github.io/), [Shengyu Huang](https://shengyuh.github.io/), [Marc Pollefeys](https://people.inf.ethz.ch/marc.pollefeys/), [Laura Leal-Taixé](https://research.nvidia.com/labs/dvl/author/laura-leal-taixe/), [Zan Gojcic+](https://zgojcic.github.io/), [Haithem Turki+](https://haithemturki.com/)
 </div>
 
+<p align="center">
+  <img src="assets/nvidia-hq-dvlt.gif" alt="Déjà View demo" width="100%">
+</p>
+
 ## Overview
 
 DéjàView (DVLT) is a recurrent transformer for multi-view 3D reconstruction. It
