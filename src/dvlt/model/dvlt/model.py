@@ -27,6 +27,7 @@ from typing import Any, Dict, Optional
 import torch
 from huggingface_hub import PyTorchModelHubMixin
 from torch import Tensor, nn
+from torch.utils.checkpoint import checkpoint as grad_checkpoint
 
 from dvlt.common.amp import force_fp32
 from dvlt.common.constants import DataField, PredictionField
@@ -370,6 +371,7 @@ class DVLTModel(
             )
         if hasattr(self.patch_embed_encoder, "mask_token"):
             self.patch_embed_encoder.mask_token.requires_grad_(False)
+        self.patch_embed_encoder.enable_gradient_checkpointing()
 
     def _normalize_images(self, images: Tensor) -> Tensor:
         return (images - self._resnet_mean) / self._resnet_std
@@ -414,10 +416,10 @@ class DVLTModel(
         if self.time_conditioning == "continuous":
             t_batch = torch.full((B,), t_now, device=x.device, dtype=torch.float32)
             t_frame = t_batch.unsqueeze(1).expand(-1, S).reshape(B * S)
-            x = block(x, t_frame, t_batch, rope_pos, B, S)
+            x = grad_checkpoint(block, x, t_frame, t_batch, rope_pos, B, S, use_reentrant=False)
         else:
             t_pair = torch.tensor([[t_now, t_next]], device=x.device, dtype=torch.float32)
-            x = block(x, t_pair.expand(B * S, -1), t_pair.expand(B, -1), rope_pos, B, S)
+            x = grad_checkpoint(block, x, t_pair.expand(B * S, -1), t_pair.expand(B, -1), rope_pos, B, S, use_reentrant=False)
         return x
 
     def _step(self, x, k: int, rope_pos, B, S):
@@ -429,13 +431,13 @@ class DVLTModel(
         block_idx = self._get_block_idx_for_step(k)
         block = self.recurrent_blocks[block_idx]
         if self._gate_mode == "none":
-            return block(x, None, None, rope_pos, B, S)
+            return grad_checkpoint(block, x, None, None, rope_pos, B, S, use_reentrant=False)
         start, end = self._block_ranges[block_idx] if self._shared_blocks else (k, k + 1)
         local_k = k - start
         t_val = local_k / max(end - start - 1, 1)
         t_batch = torch.full((B,), t_val, device=x.device, dtype=torch.float32)
         t_frame = t_batch.unsqueeze(1).expand(-1, S).reshape(B * S)
-        return block(x, t_frame, t_batch, rope_pos, B, S)
+        return grad_checkpoint(block, x, t_frame, t_batch, rope_pos, B, S, use_reentrant=False)
 
     # ==================== Solvers ====================
 
