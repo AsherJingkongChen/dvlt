@@ -12,7 +12,12 @@ import torch.nn.functional as F
 from torch import Tensor, nn
 from torch.utils.checkpoint import checkpoint as grad_checkpoint
 
+from dvlt.common.pose import inverse_pose
 from dvlt.model_components import activate_head
+from dvlt.model_components.pose_encoding import (
+    extri_intri_to_pose_enc,
+    pose_enc_to_extri_intri,
+)
 
 from .heads import _concat_uv
 from .model import DVLTModel, _slice_expand_flatten
@@ -119,7 +124,7 @@ class CameraHead(nn.Module):
         H: int,
         W: int,
     ) -> Tensor:
-        """features[0]: (B, S, 1 + R + H_P * W_P, C) -> (B, S, 3 + 4 + 2)."""
+        """features[0]: (B, S, 1 + R + H_P * W_P, C) -> (B, S, 3 + 4 + 2) in W2C coords."""
         x = features[0]
         B, S = x.shape[:2]
         x = x.reshape(B * S, *x.shape[2:])
@@ -133,7 +138,10 @@ class CameraHead(nn.Module):
             cls_chunks.append(self._forward_impl(x[start:end], rope_pos[start:end]))
         cls = cls_chunks[0] if len(cls_chunks) == 1 else torch.cat(cls_chunks, dim=0)
 
-        return self.camera_head(cls, B, S)
+        pose_enc_c2w = self.camera_head(cls, B, S)
+        pose_extr_c2w, pose_intr = pose_enc_to_extri_intri(pose_enc_c2w, (H, W))
+        pose_extr_w2c = inverse_pose(pose_extr_c2w)
+        return extri_intri_to_pose_enc(pose_extr_w2c, pose_intr, (H, W))
 
     def _forward_impl(self, x, pos):
         """Per-chunk forward over the ray-decoder trunk; returns the camera-token slot."""
