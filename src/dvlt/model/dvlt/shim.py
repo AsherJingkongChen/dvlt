@@ -138,10 +138,10 @@ class CameraHead(nn.Module):
             cls_chunks.append(self._forward_impl(x[start:end], rope_pos[start:end]))
         cls = cls_chunks[0] if len(cls_chunks) == 1 else torch.cat(cls_chunks, dim=0)
 
-        pose_enc_c2w = self.camera_head(cls, B, S)
-        pose_extr_c2w, pose_intr = pose_enc_to_extri_intri(pose_enc_c2w, (H, W))
-        pose_extr_w2c = inverse_pose(pose_extr_c2w)
-        return extri_intri_to_pose_enc(pose_extr_w2c, pose_intr, (H, W))
+        enc_c2w = self.camera_head(cls, B, S)
+        extr_c2w, intr = pose_enc_to_extri_intri(enc_c2w, (H, W))
+        extr_w2c = inverse_pose(extr_c2w)
+        return extri_intri_to_pose_enc(extr_w2c, intr, (H, W))
 
     def _forward_impl(self, x, pos):
         """Per-chunk forward over the ray-decoder trunk; returns the camera-token slot."""
